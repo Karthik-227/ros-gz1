@@ -133,6 +133,16 @@
       </link>
     </model>
 
+    <!-- Pose is "X Y Z roll pitch yaw" in the world ENU frame:
+           X = East, Y = North, Z = up, angles in degrees.
+         The ArduPilot plugin maps this to NED as (N, E, D) = (y, x, -z), so
+         Gazebo's FIRST number is East in every guidance number downstream.
+         Z = 0.195 is the iris's landing-gear clearance -- the model origin
+         sits that far above its feet. Spawn it at 0 and the legs start inside
+         the ground plane, and the physics engine shoves the model free.
+         Yaw only orients the model on the pad; a multirotor flies by velocity
+         and acceleration vectors, so it does not affect the guidance. -->
+
     <!-- Pursuer: world origin, SITL instance 0, FDM port 9002. -->
     <include>
       <uri>model://iris_pursuer</uri>
@@ -140,8 +150,12 @@
       <pose degrees="true">0 0 0.195 0 0 0</pose>
     </include>
 
-    <!-- Target: 500 m North (Gazebo ENU x = North here), instance 1,
-         FDM port 9012. -->
+    <!-- Target: 500 m due EAST of the pursuer (Gazebo x = East), instance 1,
+         FDM port 9012. Confirmed by measurement on a flown run: at t = 0 the
+         log gave lam = 1.586 rad = 90.9 deg, p_t_e = 500.0, p_t_n = -7.8.
+         The offline simulator measures --lam0 as a bearing from North, so the
+         matching offline geometry is "--r0 500 --lam0 90". For 500 m North
+         instead, use <pose degrees="true">0 500 0.195 0 0 180</pose>. -->
     <include>
       <uri>model://iris_target</uri>
       <name>iris_target</name>
