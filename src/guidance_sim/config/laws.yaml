@@ -1,0 +1,80 @@
+# Default gains per guidance law.
+#
+# These mirror the dataclass defaults in guidance_sim/guidance_laws.py. They
+# are kept here so a run can be named rather than spelled out as a wall of CLI
+# flags, and so the gains used for a report figure are version-controlled
+# alongside it.
+#
+# a_max is the latax saturation limit. ArduCopter's ANGLE_MAX defaults to
+# 30 deg, so the airframe can only deliver g*tan(30) = 5.66 m/s^2. Raising
+# ANGLE_MAX to 45 in config/sitl_guided.parm buys 9.81 m/s^2. Offline runs and
+# SITL runs must use the SAME number or the comparison is meaningless.
+
+defaults:
+  a_max: 5.66          # g * tan(30 deg), matching stock ANGLE_MAX
+  capture: 2.0         # m; larger than the offline 1.0 because SITL has
+                       # position noise and a finite control bandwidth
+  alt: 50.0
+  rate_hz: 50.0
+
+laws:
+  pure_pursuit:
+    k: 2.0
+  deviated_pursuit:
+    k: 2.0
+    delta_deg: 20.0
+  constant_bearing:
+    k: 2.0
+  pn:
+    N: 3.0
+  ppn:
+    N: 3.0
+  apn:
+    N: 3.0
+  zem:
+    N: 3.0
+  los:
+    kp: 1.0
+    kd: 2.5
+
+# Named engagement presets. Geometry is in the NED conventions of
+# guidance_sim/engagement.py: bearings from North, positive towards East.
+engagements:
+  head_on:
+    r0: 500.0
+    lam0: 0.0
+    gam0: 0.0
+    gam_t: 180.0
+    vp: 12.0
+    vt: 6.0
+  crossing:
+    r0: 500.0
+    lam0: 30.0
+    gam0: 0.0
+    gam_t: 200.0
+    vp: 12.0
+    vt: 6.0
+  tail_chase:
+    r0: 300.0
+    lam0: 0.0
+    gam0: 0.0
+    gam_t: 10.0
+    vp: 12.0
+    vt: 9.0
+  fast_evader:          # nu > 1: pure pursuit cannot capture, PN can
+    r0: 600.0
+    lam0: 45.0
+    gam0: 0.0
+    gam_t: 200.0
+    vp: 10.0
+    vt: 12.0
+  weaving:
+    r0: 500.0
+    lam0: 20.0
+    gam0: 0.0
+    gam_t: 190.0
+    vp: 12.0
+    vt: 6.0
+    target: weave
+    at: 3.0
+    weave_period: 8.0

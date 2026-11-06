@@ -1,0 +1,92 @@
+# SITL parameters for guidance runs. Load with:
+#   param load config/sitl_guided.parm      (in MAVProxy)
+# or pass to sim_vehicle.py with --add-param-file=.../sitl_guided.parm
+
+# GUIDED acceleration setpoints are zeroed if nothing arrives within this
+# window, after which the copter brakes to a hover
+# (ArduCopter/mode_guided.cpp accel_control_run, line ~803). The guidance loop
+# runs at 50 Hz so 3 s is ample headroom; do not shorten it casually.
+GUID_TIMEOUT     3.0
+
+# 0  = position and velocity error feedback stay active around the target that
+#      the controller integrates from the acceleration input. Works fine.
+# 32 = DoNotStabilizeVelocityXY, for a more open-loop acceleration response.
+# 16 = DoNotStabilizePositionXY.
+# Bits from ArduCopter/mode.h:1215. Start at 0; try 32 if tracking looks
+# over-damped.
+GUID_OPTIONS     0
+
+# Lean-angle limit, which IS the latax limit: a_max = g * tan(ANGLE_MAX).
+#   30 deg -> 5.66 m/s^2  (ArduPilot default)
+#   45 deg -> 9.81 m/s^2
+# Whatever is set here must match the --a-max passed to engage/offline.
+ANGLE_MAX        3000
+
+# Let the guidance law own the horizontal plane; keep speed/accel limits from
+# clipping the commands before ANGLE_MAX does.
+WPNAV_SPEED      1500
+WPNAV_ACCEL      500
+
+# Faster telemetry so the 50 Hz loop sees fresh geometry. engage.py also
+# requests LOCAL_POSITION_NED explicitly via SET_MESSAGE_INTERVAL.
+SR1_POSITION     50
+SR2_POSITION     50
+
+# SITL convenience: skip the arming nags that have nothing to do with guidance.
+ARMING_CHECK     0
+
+# --------------------------------------------------------------------------- #
+# Frame and airframe defaults that sim_vehicle.py NO LONGER SUPPLIES.
+#
+# ArduPilot 4.8-dev changed how per-frame defaults reach the binary
+# (Tools/autotest/sim_vehicle.py, the comment above the --defaults block):
+#
+#   "the SITL binary resolves the per-frame default parameter files from its
+#    embedded vehicleinfo.json keyed by --model, so we no longer pass
+#    --defaults here. Use --add-param-file or --param to layer extra
+#    parameters on top of the embedded defaults."
+#
+# Keyed by --model, NOT by -f/--frame. We pass '--model JSON' (required, the
+# ArduPilot Gazebo plugin speaks the JSON FDM protocol), so the binary looks up
+# frame "JSON" and never loads default_params/copter.parm or
+# default_params/gazebo-iris.parm -- the files that carry the iris frame
+# definition. The symptoms are 'AP: Frame: UNSUPPORTED' on startup and then
+# 'PreArm: Motors: Check frame class and type' forever, with FRAME_CLASS
+# stuck at 0. The motor/frame check is NOT skippable by ARMING_CHECK 0.
+#
+# So everything from those two files that actually matters has to live here.
+
+# Iris is a quad in X layout. Without these, nothing arms. (gazebo-iris.parm)
+FRAME_CLASS      1
+FRAME_TYPE       1
+
+# Hover throttle and thrust curve for the iris. Left at the firmware defaults
+# the climb is sluggish and altitude hold overshoots, which would look exactly
+# like a guidance or altitude-hold bug. (copter.parm)
+MOT_THST_EXPO    0.65
+MOT_THST_HOVER   0.39
+
+# Small non-zero accel offsets so the INS reports itself as calibrated.
+# ARMING_CHECK 0 masks the resulting pre-arm failure, but the EKF still
+# settles faster with these, and they are needed the moment anyone restores
+# the arming checks. (copter.parm)
+INS_ACCOFFS_X    0.001
+INS_ACCOFFS_Y    0.001
+INS_ACCOFFS_Z    0.001
+INS_ACCSCAL_X    1.001
+INS_ACCSCAL_Y    1.001
+INS_ACCSCAL_Z    1.001
+INS_ACC2OFFS_X   0.001
+INS_ACC2OFFS_Y   0.001
+INS_ACC2OFFS_Z   0.001
+INS_ACC2SCAL_X   1.001
+INS_ACC2SCAL_Y   1.001
+INS_ACC2SCAL_Z   1.001
+
+# Engagements run out to 500 m and beyond. copter.parm used to set
+# FENCE_RADIUS 150, and the firmware default is 300 m -- either would breach
+# mid-run and trigger an RTL that looks like the guidance law diverging.
+# Keep the fence off for engagement work and set the radius wide if it is
+# ever turned on.
+FENCE_ENABLE     0
+FENCE_RADIUS     2000
