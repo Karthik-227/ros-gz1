@@ -39,12 +39,13 @@ def main():
     hit = False
     r_min, pk_am = r0, 0.0
     
-    # --- Data Lists for ALL 20 Variables ---
+    # --- Data Lists for ALL 22 Variables ---
     t_l, r_l, lam_l, lamd_l = [], [], [], []
     xm_l, ym_l, xt_l, yt_l = [], [], [], []
     vxm_l, vym_l, vxt_l, vyt_l = [], [], [], []
     vrx_l, vry_l, vr_l, vth_l = [], [], [], []
     gm_l, gt_l, am_l, at_l = [], [], [], []
+    v_ratio_l, psi_l = [], []     # New lists for velocity ratio and psi
 
     # =================================================================
     # 3. KINEMATIC LOOP
@@ -74,6 +75,10 @@ def main():
         lam = math.atan2(dy, dx)           # LOS Angle
         lam_d = vth / r                    # LOS Rate (theta dot)
         
+        # New Parameters
+        v_ratio = vm / vt                  # Velocity of missile / velocity of Target
+        psi = gt - lam                     # Target heading angle - LOS angle
+
         # Origin to target (for LOSG & BR)
         lt = math.atan2(yt, xt)
         lm = math.atan2(ym, xm) if (xm != 0 or ym != 0) else lt
@@ -112,6 +117,7 @@ def main():
         vr_l.append(vr); vth_l.append(vth)
         gm_l.append(math.degrees(gm)); gt_l.append(math.degrees(gt))
         am_l.append(am / 9.81); at_l.append(at / 9.81)
+        v_ratio_l.append(v_ratio); psi_l.append(math.degrees(psi))
 
         # Update Headings
         gt += (at / vt) * dt
@@ -140,7 +146,7 @@ def main():
     print("===========================================================")
 
     # =================================================================
-    # 5. PLOTTING DICTIONARY (20 Variables)
+    # 5. PLOTTING DICTIONARY (22 Variables)
     # =================================================================
     p_vars = {
         '1': ('Time [s]', t_l), 
@@ -153,7 +159,8 @@ def main():
         '13': ('Rad Rel Vel (vr) [m/s]', vr_l), '14': ('Trans Rel Vel (vth) [m/s]', vth_l),
         '15': ('Mis Vel X (vxm) [m/s]', vxm_l), '16': ('Mis Vel Y (vym) [m/s]', vym_l),
         '17': ('Tgt Vel X (vxt) [m/s]', vxt_l), '18': ('Tgt Vel Y (vyt) [m/s]', vyt_l),
-        '19': ('Rel Vel X (vrx) [m/s]', vrx_l), '20': ('Rel Vel Y (vry) [m/s]', vry_l)
+        '19': ('Rel Vel X (vrx) [m/s]', vrx_l), '20': ('Rel Vel Y (vry) [m/s]', vry_l),
+        '21': ('Vel Ratio (vm/vt)', v_ratio_l), '22': ('Psi (gt-lam) [deg]', psi_l)
     }
 
     while True:
