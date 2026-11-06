@@ -135,12 +135,12 @@ class ConstantBearing(PurePursuit):
     name: str = 'constant_bearing'
 
     def command(self, eng: Engagement, dt: float) -> np.ndarray:
-        gam_star = eng.collision_heading()
-        if gam_star is None:
+        alpha_p_star = eng.collision_heading()
+        if alpha_p_star is None:
             # No collision triangle exists (target outruns us); fall back to
             # pointing straight at it.
             return self.k * eng.Vp * eng.eps * right_normal(eng.v_p)
-        err = wrap_pi(gam_star - eng.gam)
+        err = wrap_pi(alpha_p_star - eng.alpha_p)
         return self.k * eng.Vp * err * right_normal(eng.v_p)
 
 

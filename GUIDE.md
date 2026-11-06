@@ -23,7 +23,7 @@ Wait for `AP: ArduPilot Ready` twice.
 ## 3. Terminal 2 — take off both
 
 ```bash
-cd /home/karthik/guidance_ws && source install/setup.bash && ros2 run guidance_sim takeoff_both --alt 50
+cd /home/karthik/guidance_ws && source install/setup.bash && ros2 run guidance_sim takeoff_both --alt 5
 ```
 
 ## 4. Terminal 3 — run one engagement
@@ -65,6 +65,11 @@ cd /home/karthik/guidance_ws && source install/setup.bash && ros2 run guidance_s
 ```
 
 `tpn` and `pn` are the same law — identical output.
+
+### AFTER CHANGING GEOMETRY under /src, always rebuild to applyb changes
+```
+cd /home/karthik/guidance_ws && colcon build --packages-select guidance_sim --symlink-install
+```
 
 ## 5. Terminal 2 — land
 

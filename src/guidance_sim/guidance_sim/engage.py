@@ -104,7 +104,7 @@ def target_setpoint(v_t_cmd: np.ndarray, z_now: float, z_target: float,
     return np.array([v_t_cmd[0], v_t_cmd[1], vz])
 
 
-def speed_hold(v_p: np.ndarray, v_cmd: float, gam0: float,
+def speed_hold(v_p: np.ndarray, v_cmd: float, alpha_p0: float,
                gain: float = 0.5, limit: float = 2.0) -> np.ndarray:
     """Along-track acceleration holding the pursuer's horizontal speed.
 
@@ -114,7 +114,7 @@ def speed_hold(v_p: np.ndarray, v_cmd: float, gam0: float,
     assumes it has.
 
     Below 0.1 m/s there is no velocity direction to push along (and
-    ``v / |v|`` would amplify noise), so the push goes along ``gam0`` instead
+    ``v / |v|`` would amplify noise), so the push goes along ``alpha_p0`` instead
     to get the vehicle moving at all.
     """
     v_h = np.array([v_p[0], v_p[1], 0.0])
@@ -122,7 +122,7 @@ def speed_hold(v_p: np.ndarray, v_cmd: float, gam0: float,
     if speed > 0.1:
         direction = v_h / speed
     else:
-        direction = np.array([math.cos(gam0), math.sin(gam0), 0.0])
+        direction = np.array([math.cos(alpha_p0), math.sin(alpha_p0), 0.0])
     a = gain * (v_cmd - speed) * direction
     n = float(np.linalg.norm(a))
     if n > limit > 0.0:
@@ -187,13 +187,16 @@ def main(argv=None) -> int:
     # of every command). A SITL copter starts hovering at zero, and no
     # classical guidance law can fix that: PN, pursuit and CLOS all only steer
     # an existing velocity vector. Without a cruise speed, |v_p| ~ 0 makes
-    # right_normal(v_p) meaningless, gamdot = latax/|v| explodes, and the
+    # right_normal(v_p) meaningless, alpha_p_dot = latax/|v| explodes, and the
     # copter spins on the spot instead of flying an engagement.
     pur.add_argument('--vp', type=float, default=12.0,
                      help='pursuer cruise speed, m/s (default 12, matching '
                           'the offline default)')
-    pur.add_argument('--gam0', type=float, default=None,
-                     help='initial pursuer heading, deg from North '
+    # --gam0 is kept as an alias so older commands and notes still work after
+    # the rename to alpha_p.
+    pur.add_argument('--alpha-p0', '--gam0', dest='alpha_p0', type=float,
+                     default=None,
+                     help='initial pursuer heading alpha_p, deg from North '
                           '(default: straight at the target)')
     pur.add_argument('--boost', type=float, default=15.0,
                      help='seconds allowed to reach cruise speed before '
@@ -230,8 +233,9 @@ def main(argv=None) -> int:
 
     tgt = parser.add_argument_group('target course')
     tgt.add_argument('--vt', type=float, default=6.0, help='target speed, m/s')
-    tgt.add_argument('--gam-t', type=float, default=180.0,
-                     help='target heading, deg from North')
+    tgt.add_argument('--alpha-t', '--gam-t', dest='alpha_t', type=float,
+                     default=180.0,
+                     help='target heading alpha_t, deg from North')
     tgt.add_argument('--target', default='straight',
                      choices=['straight', 'turn', 'weave'])
     tgt.add_argument('--at', type=float, default=0.0,
@@ -249,7 +253,7 @@ def main(argv=None) -> int:
                     period=args.weave_period)
 
     pursuer = tgt_veh = logger = None
-    gam0 = 0.0 if args.gam0 is None else math.radians(args.gam0)
+    alpha_p0 = 0.0 if args.alpha_p0 is None else math.radians(args.alpha_p0)
     t0 = time.monotonic()
     outcome, miss, r_min = 'timeout', float('inf'), float('inf')
     peak_latax, latax_sum, total_dv, n = 0.0, 0.0, 0.0, 0
@@ -276,12 +280,12 @@ def main(argv=None) -> int:
         law.reset()
 
         z_target = -abs(args.alt)
-        v_t_cmd = heading_to_velocity(args.vt, math.radians(args.gam_t))
+        v_t_cmd = heading_to_velocity(args.vt, math.radians(args.alpha_t))
 
         meta.update({
             'law': law.name, 'a_max': law.a_max,
             'N': getattr(law, 'N', ''), 'k': getattr(law, 'k', ''),
-            'Vt_cmd': args.vt, 'gam_t_deg': args.gam_t, 'alt': args.alt,
+            'Vt_cmd': args.vt, 'alpha_t_deg': args.alpha_t, 'alt': args.alt,
             'target': f'{target.kind}@{target.accel}',
             'rate_hz': args.rate, 'capture': args.capture,
             'vertical': args.vertical, 'source': 'sitl',
@@ -306,9 +310,9 @@ def main(argv=None) -> int:
         # --- accelerate the pursuer to cruise speed ----------------------
         # Guidance cannot start from a hover: see the --vp help text. Fly the
         # pursuer up to speed on velocity setpoints first, pointing it along
-        # --gam0 (default: straight at the target), which is the live
+        # --alpha-p0 (default: straight at the target), which is the live
         # equivalent of the offline InitialConditions starting at Vp on
-        # bearing gam0.
+        # bearing alpha_p0.
         p_p, _ = pursuer.state()
         p_t, _ = tgt_veh.state()
         dz = abs(p_t[2] - p_p[2])
@@ -321,13 +325,13 @@ def main(argv=None) -> int:
                   f'(pursuer {-p_p[2]:.1f} m, target {-p_t[2]:.1f} m). '
                   f'The target is being trimmed to {args.alt:g} m, but give '
                   f'it a few seconds to get there before trusting R.')
-        if args.gam0 is None:
-            gam0 = math.atan2(p_t[1] - p_p[1], p_t[0] - p_p[0])
-            print(f'[run] aiming at the target, gam0 = '
-                  f'{math.degrees(gam0):.1f} deg from North')
+        if args.alpha_p0 is None:
+            alpha_p0 = math.atan2(p_t[1] - p_p[1], p_t[0] - p_p[0])
+            print(f'[run] aiming at the target, alpha_p0 = '
+                  f'{math.degrees(alpha_p0):.1f} deg from North')
         else:
-            gam0 = math.radians(args.gam0)
-        v_p_cmd = heading_to_velocity(args.vp, gam0)
+            alpha_p0 = math.radians(args.alpha_p0)
+        v_p_cmd = heading_to_velocity(args.vp, alpha_p0)
 
         print(f'[run] accelerating pursuer to {args.vp:g} m/s '
               f'(up to {args.boost:g} s)')
@@ -365,8 +369,8 @@ def main(argv=None) -> int:
         prev_rdot = None
         next_status = 0.0
         if args.status > 0:
-            print('     t      R     Rdot      Vp     Vt   lamdot    latax'
-                  '   alt_p  alt_t')
+            print('     t      R    Rmin     Rdot      Vp     Vt   lamdot'
+                  '    latax   alt_p  alt_t')
 
         while True:
             now = time.monotonic()
@@ -389,7 +393,7 @@ def main(argv=None) -> int:
             # priority inside the horizontal envelope; speed-hold gets the
             # remainder.
             a_cmd = blend(a_cmd,
-                          speed_hold(v_p, args.vp, gam0,
+                          speed_hold(v_p, args.vp, alpha_p0,
                                      gain=args.speed_gain,
                                      limit=args.a_speed),
                           law.a_max)
@@ -419,8 +423,11 @@ def main(argv=None) -> int:
             # horizontally -- which is exactly how the stationary-pursuer
             # failure used to hide.
             if args.status > 0 and t >= next_status:
-                print(f'{t:6.1f} {eng.R:7.1f} {eng.Rdot:7.2f} {eng.Vp:7.2f} '
-                      f'{eng.Vt:6.2f} {eng.lamdot:8.4f} '
+                # Rmin is the closest approach so far -- at the end of the run
+                # it IS the miss distance, so you can watch it converge rather
+                # than waiting for the verdict.
+                print(f'{t:6.1f} {eng.R:7.1f} {r_min:7.1f} {eng.Rdot:7.2f} '
+                      f'{eng.Vp:7.2f} {eng.Vt:6.2f} {eng.lamdot:8.4f} '
                       f'{eng.latax_of(a_cmd):8.3f} '
                       f'{-p_p[2]:6.1f} {-p_t[2]:6.1f}')
                 next_status += args.status
@@ -463,7 +470,7 @@ def main(argv=None) -> int:
                                 'mean_abs_latax': latax_sum / n if n else 0.0,
                                 'total_dv': total_dv,
                                 'vp_cmd': args.vp,
-                                'gam0_deg': math.degrees(gam0)})
+                                'alpha_p0_deg': math.degrees(alpha_p0)})
             path = logger.write(args.out)
             print(f'{law.name:16} {outcome:11} miss={miss:7.2f} m  '
                   f't_f={t_f:6.2f} s  peak|latax|={peak_latax:5.2f} m/s^2  '
@@ -479,13 +486,16 @@ def main(argv=None) -> int:
             print(bar)
             if outcome == 'hit':
                 print('  RESULT: INTERCEPTION  --  the pursuer hit the target')
-                print(f'          miss distance {miss:.2f} m   '
+                print(f'          R_miss {miss:.2f} m   '
+                      f'R_min {r_min:.2f} m   '
                       f'time of flight {t_f:.2f} s   '
                       f'(capture radius {args.capture:g} m)')
             elif outcome == 'miss':
                 print('  RESULT: NO INTERCEPTION  --  the pursuer missed')
-                print(f'          closest approach {miss:.2f} m at t = {t_f:.2f} s, '
-                      f'needed <= {args.capture:g} m')
+                print(f'          R_miss {miss:.2f} m   '
+                      f'R_min {r_min:.2f} m   '
+                      f't_miss {t_f:.2f} s   '
+                      f'(needed <= {args.capture:g} m)')
             elif outcome == 'interrupted':
                 print('  RESULT: INTERRUPTED  --  stopped by hand, no verdict')
                 print(f'          closest range reached was {r_min:.2f} m '

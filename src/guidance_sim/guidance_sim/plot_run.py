@@ -138,7 +138,8 @@ def plot_runs(paths: list[Path], title: str | None = None):
             (ax_r, 'R [m]', 'Range'),
             (ax_ld, r'$\dot\lambda$ [deg/s]', 'LOS rate'),
             (ax_la, 'latax [m/s$^2$]', 'Lateral acceleration (+ve right)'),
-            (ax_eps, r'$\epsilon$ [deg]', r'Heading error $\lambda-\gamma$')):
+            (ax_eps, r'$\epsilon$ [deg]',
+             r'Heading error $\epsilon=\lambda-\alpha_P$')):
         ax.set_xlabel('t [s]')
         ax.set_ylabel(ylabel)
         ax.set_title(ttl, fontsize=10)

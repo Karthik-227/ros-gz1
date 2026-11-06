@@ -118,8 +118,8 @@ class InitialConditions:
 
     R0: float = 500.0
     lam0: float = math.radians(0.0)
-    gam0: float = math.radians(0.0)
-    gam_t: float = math.radians(180.0)
+    alpha_p0: float = math.radians(0.0)
+    alpha_t: float = math.radians(180.0)
     Vp: float = 12.0
     Vt: float = 6.0
     alt: float = 50.0
@@ -130,17 +130,19 @@ class InitialConditions:
         p_p = np.array([0.0, 0.0, down])
         p_t = p_p + self.R0 * np.array([math.cos(self.lam0),
                                         math.sin(self.lam0), 0.0])
-        v_t = self.Vt * np.array([math.cos(self.gam_t),
-                                  math.sin(self.gam_t), 0.0])
-        gam0 = self.gam0
+        v_t = self.Vt * np.array([math.cos(self.alpha_t),
+                                  math.sin(self.alpha_t), 0.0])
+        alpha_p0 = self.alpha_p0
         if self.lead_start:
             probe = Engagement.from_states(
-                p_p, self.Vp * np.array([math.cos(gam0), math.sin(gam0), 0.0]),
+                p_p, self.Vp * np.array([math.cos(alpha_p0),
+                                         math.sin(alpha_p0), 0.0]),
                 p_t, v_t)
             lead = probe.collision_heading()
             if lead is not None:
-                gam0 = lead
-        v_p = self.Vp * np.array([math.cos(gam0), math.sin(gam0), 0.0])
+                alpha_p0 = lead
+        v_p = self.Vp * np.array([math.cos(alpha_p0),
+                                  math.sin(alpha_p0), 0.0])
         return p_p, v_p, p_t, v_t
 
 
@@ -284,10 +286,14 @@ def _geometry_args(parser: argparse.ArgumentParser) -> None:
     g.add_argument('--r0', type=float, default=500.0, help='initial range, m')
     g.add_argument('--lam0', type=float, default=0.0,
                    help='initial LOS bearing, deg from North')
-    g.add_argument('--gam0', type=float, default=0.0,
-                   help='initial pursuer heading, deg from North')
-    g.add_argument('--gam-t', type=float, default=180.0,
-                   help='target heading, deg from North (default head-on)')
+    # --gam0 / --gam-t are kept as aliases so older commands and notes still
+    # work after the rename to alpha_p / alpha_t.
+    g.add_argument('--alpha-p0', '--gam0', dest='alpha_p0', type=float,
+                   default=0.0,
+                   help='initial pursuer heading alpha_p, deg from North')
+    g.add_argument('--alpha-t', '--gam-t', dest='alpha_t', type=float,
+                   default=180.0,
+                   help='target heading alpha_t, deg from North')
     g.add_argument('--vp', type=float, default=12.0, help='pursuer speed, m/s')
     g.add_argument('--vt', type=float, default=6.0, help='target speed, m/s')
     g.add_argument('--alt', type=float, default=50.0, help='altitude, m')
@@ -317,9 +323,10 @@ def _build(args) -> tuple[object, InitialConditions, Target, dict]:
     law = make_law(args.law, **kwargs)
 
     ic = InitialConditions(
-        R0=args.r0, lam0=math.radians(args.lam0), gam0=math.radians(args.gam0),
-        gam_t=math.radians(args.gam_t), Vp=args.vp, Vt=args.vt, alt=args.alt,
-        lead_start=args.lead_start)
+        R0=args.r0, lam0=math.radians(args.lam0),
+        alpha_p0=math.radians(args.alpha_p0),
+        alpha_t=math.radians(args.alpha_t), Vp=args.vp, Vt=args.vt,
+        alt=args.alt, lead_start=args.lead_start)
 
     # CLOS is station referenced; the natural station is the pursuer's launch
     # point, so put it there rather than leaving it at the NED origin (which
@@ -332,8 +339,8 @@ def _build(args) -> tuple[object, InitialConditions, Target, dict]:
         'law': law.name, 'a_max': law.a_max,
         'N': getattr(law, 'N', ''), 'k': getattr(law, 'k', ''),
         'Vp': ic.Vp, 'Vt': ic.Vt, 'nu': ic.Vt / ic.Vp if ic.Vp else '',
-        'R0': ic.R0, 'lam0_deg': args.lam0, 'gam0_deg': args.gam0,
-        'gam_t_deg': args.gam_t, 'alt': ic.alt,
+        'R0': ic.R0, 'lam0_deg': args.lam0, 'alpha_p0_deg': args.alpha_p0,
+        'alpha_t_deg': args.alpha_t, 'alt': ic.alt,
         'target': f'{target.kind}@{target.accel}',
         'dt': args.dt, 'capture': args.capture, 'source': 'offline',
     }
@@ -412,7 +419,8 @@ def main_sweep(argv=None) -> int:
                         period=args.weave_period)
         ic = InitialConditions(
             R0=args.r0, lam0=math.radians(args.lam0),
-            gam0=math.radians(args.gam0), gam_t=math.radians(args.gam_t),
+            alpha_p0=math.radians(args.alpha_p0),
+            alpha_t=math.radians(args.alpha_t),
             Vp=args.vp, Vt=nu * args.vp, alt=args.alt,
             lead_start=args.lead_start)
         law = make_law(law_name, N=N, a_max=args.a_max)

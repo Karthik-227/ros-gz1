@@ -19,7 +19,7 @@ import numpy as np
 #: ``extra_log()`` is appended after these, sorted, so the schema stays stable.
 BASE_COLUMNS = [
     't',
-    'R', 'Rdot', 'Vc', 'lam', 'lamdot', 'gam', 'gam_t', 'eps',
+    'R', 'Rdot', 'Vc', 'lam', 'lamdot', 'alpha_p', 'alpha_t', 'eps',
     'Vp', 'Vt', 'nu', 't_go', 'zem_perp',
     'latax', 'a_n', 'a_e', 'a_d', 'a_mag',
     'p_p_n', 'p_p_e', 'p_p_d', 'v_p_n', 'v_p_e', 'v_p_d',

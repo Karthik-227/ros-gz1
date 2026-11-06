@@ -43,36 +43,36 @@ engagements:
   head_on:
     r0: 500.0
     lam0: 0.0
-    gam0: 0.0
-    gam_t: 180.0
+    alpha_p0: 0.0
+    alpha_t:180.0
     vp: 12.0
     vt: 6.0
   crossing:
     r0: 500.0
     lam0: 30.0
-    gam0: 0.0
-    gam_t: 200.0
+    alpha_p0: 0.0
+    alpha_t:200.0
     vp: 12.0
     vt: 6.0
   tail_chase:
     r0: 300.0
     lam0: 0.0
-    gam0: 0.0
-    gam_t: 10.0
+    alpha_p0: 0.0
+    alpha_t:10.0
     vp: 12.0
     vt: 9.0
   fast_evader:          # nu > 1: pure pursuit cannot capture, PN can
     r0: 600.0
     lam0: 45.0
-    gam0: 0.0
-    gam_t: 200.0
+    alpha_p0: 0.0
+    alpha_t:200.0
     vp: 10.0
     vt: 12.0
   weaving:
     r0: 500.0
     lam0: 20.0
-    gam0: 0.0
-    gam_t: 190.0
+    alpha_p0: 0.0
+    alpha_t:190.0
     vp: 12.0
     vt: 6.0
     target: weave

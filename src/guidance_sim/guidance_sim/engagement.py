@@ -12,9 +12,10 @@ between the flight code and the guidance maths.
 
       lam = atan2(dE, dN)
 
-* Pursuer heading ``gam`` (gamma) uses the same convention::
+* Pursuer heading ``alpha_p`` uses the same convention, and the target's is
+  ``alpha_t``::
 
-      gam = atan2(vE, vN)
+      alpha_p = atan2(vE, vN)
 
 * Lateral acceleration ``latax`` is signed, positive to the pursuer's
   **right**. With the bearing convention above this gives the clean kinematic
@@ -111,11 +112,11 @@ class Engagement:
     omega: np.ndarray = field(default_factory=lambda: np.zeros(3))
     lam: float = 0.0
     lamdot: float = 0.0
-    gam: float = 0.0
-    gam_t: float = 0.0
+    alpha_p: float = 0.0            # pursuer heading
+    alpha_t: float = 0.0            # target heading
     Vp: float = 0.0
     Vt: float = 0.0
-    eps: float = 0.0                # heading error / lead angle, lam - gam
+    eps: float = 0.0                # heading error / lead angle, lam - alpha_p
     t_go: float = float('inf')
     zem: np.ndarray = field(default_factory=lambda: np.zeros(3))
     zem_perp: np.ndarray = field(default_factory=lambda: np.zeros(3))
@@ -143,11 +144,11 @@ class Engagement:
         e.lamdot = float(e.omega @ DOWN)
 
         e.lam = bearing(e.r)
-        e.gam = bearing(v_p)
-        e.gam_t = bearing(v_t)
+        e.alpha_p = bearing(v_p)
+        e.alpha_t = bearing(v_t)
         e.Vp = float(np.linalg.norm(v_p))
         e.Vt = float(np.linalg.norm(v_t))
-        e.eps = wrap_pi(e.lam - e.gam)
+        e.eps = wrap_pi(e.lam - e.alpha_p)
 
         # Time-to-go. Only meaningful while actually closing; an opening
         # engagement has no finite intercept under the zero-effort assumption.
@@ -204,7 +205,7 @@ class Engagement:
         d = {
             'R': self.R, 'Rdot': self.Rdot, 'Vc': self.Vc,
             'lam': self.lam, 'lamdot': self.lamdot,
-            'gam': self.gam, 'gam_t': self.gam_t,
+            'alpha_p': self.alpha_p, 'alpha_t': self.alpha_t,
             'eps': self.eps, 'Vp': self.Vp, 'Vt': self.Vt,
             't_go': self.t_go,
             'zem_perp': float(np.linalg.norm(self.zem_perp)),
