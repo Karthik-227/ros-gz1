@@ -472,6 +472,31 @@ def main(argv=None) -> int:
             print(f'wrote {path} ({len(logger.rows)} rows, '
                   f'{n / t_f if t_f else 0:.1f} Hz achieved)')
 
+            # Unambiguous verdict, printed last so it is the thing left on
+            # screen. The one-line summary above is dense and easy to misread
+            # after watching a 30 s run.
+            bar = '=' * 70
+            print(bar)
+            if outcome == 'hit':
+                print('  RESULT: INTERCEPTION  --  the pursuer hit the target')
+                print(f'          miss distance {miss:.2f} m   '
+                      f'time of flight {t_f:.2f} s   '
+                      f'(capture radius {args.capture:g} m)')
+            elif outcome == 'miss':
+                print('  RESULT: NO INTERCEPTION  --  the pursuer missed')
+                print(f'          closest approach {miss:.2f} m at t = {t_f:.2f} s, '
+                      f'needed <= {args.capture:g} m')
+            elif outcome == 'interrupted':
+                print('  RESULT: INTERRUPTED  --  stopped by hand, no verdict')
+                print(f'          closest range reached was {r_min:.2f} m '
+                      f'after {t_f:.2f} s')
+            else:
+                print(f'  RESULT: NO INTERCEPTION  --  time limit '
+                      f'({args.t_max:g} s) reached')
+                print(f'          still {r_min:.2f} m apart and never closed; '
+                      f'raise --t-max')
+            print(bar)
+
         # Stop commanding before anything else: a stale acceleration setpoint
         # is the one thing that must not outlive this process. ArduCopter
         # would zero it after GUID_TIMEOUT anyway, but do not rely on that.

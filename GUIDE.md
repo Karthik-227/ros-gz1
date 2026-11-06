@@ -125,13 +125,16 @@ Runs all 8 laws over 5 engagement presets plus the sweep: 76 runs, 6 PNGs, about
 
 ## B. Gazebo + dual SITL
 
-**Partly tested.** The world and the two `sim_vehicle.py` commands below are known
-good. The engagement loop on top of them is not. Work through Part C the first time
-rather than running this blind.
+**Working.** Flown end to end: both instances arm, both copters take off, and a PN
+engagement runs to a hit. Part C is still the right order to bring it up in after a
+restart, and Part D explains every failure met on the way.
 
-Needs four terminals. Each one needs the overlay sourced (step 0).
+Needs two terminals for the normal path (B1), or four if you are debugging (B2). Each
+needs the overlay sourced (step 0).
 
-### B1. Everything at once (ROS 2 launch)
+### B1. The normal three commands
+
+**Terminal 1 — the simulator.** Leave this running:
 
 ```bash
 cd /home/karthik/guidance_ws && source install/setup.bash && ros2 launch guidance_sim engagement.launch.py
@@ -140,10 +143,59 @@ cd /home/karthik/guidance_ws && source install/setup.bash && ros2 launch guidanc
 Starts Gazebo on `worlds/engagement.sdf`, waits 6 s, starts SITL instance 0, waits another
 6 s, starts instance 1. Add `headless:=true` to skip the GUI.
 
-Then, in a second terminal:
+**Wait for `AP: ArduPilot Ready` to appear twice**, once per instance. Starting the next
+command before instance 1 is up is a reliable way to have only one copter take off.
+
+**Terminal 2 — put both copters in the air:**
 
 ```bash
-cd /home/karthik/guidance_ws && source install/setup.bash && ros2 run guidance_sim engage --law pn --takeoff --alt 50 -o runs/sitl_pn.csv
+cd /home/karthik/guidance_ws && source install/setup.bash && ros2 run guidance_sim takeoff_both --alt 50
+```
+
+**Terminal 2 — fly the engagement.** This is the PN geometry that has actually been flown:
+
+```bash
+cd /home/karthik/guidance_ws && source install/setup.bash && ros2 run guidance_sim engage --law pn --vp 12 --alt 50 --vt 6 --gam-t 180 -o runs/sitl_pn.csv
+```
+
+Note **no `--takeoff`** — the copters are already up from the previous command. Use
+`engage --takeoff` *instead of* `takeoff_both` if you would rather do it in one step;
+never both.
+
+Three lines tell you it is working, in this order:
+
+```
+[run] aiming at the target, gam0 = 90.0 deg from North     <- target is East
+[run] accelerating pursuer to 12 m/s (up to 15.0 s)
+[run] pursuer at 11.84 m/s                                 <- boost phase worked
+```
+
+Then a status line every second. **`Rdot` negative means it is closing** — that is the
+column to watch:
+
+```
+     t      R     Rdot      Vp     Vt   lamdot    latax   alt_p  alt_t
+   0.0   500.8   -5.98   12.01   6.00   0.0121    0.223    50.0   50.0
+```
+
+And at the end, the verdict:
+
+```
+pn               hit      miss=   1.42 m  t_f= 29.10 s  peak|latax|= 0.71 m/s^2 ...
+wrote runs/sitl_pn.csv (1455 rows, 48.6 Hz achieved)
+======================================================================
+  RESULT: INTERCEPTION  --  the pursuer hit the target
+          miss distance 1.42 m   time of flight 29.10 s   (capture radius 2 m)
+======================================================================
+```
+
+A miss prints `RESULT: NO INTERCEPTION` with the closest approach and the time it
+happened, and a run that never closes says so and tells you to raise `--t-max`.
+
+**Land them again** before flying a second engagement:
+
+```bash
+cd /home/karthik/guidance_ws && source install/setup.bash && ros2 run guidance_sim land_both
 ```
 
 ### B1a. Take off both copters on one command
